@@ -145,7 +145,9 @@
 
     #calendar {
       display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
+      /* 日・月は細く、火〜土は初期版に近い幅で固定 */
+      grid-template-columns: 42px 42px repeat(5, 92px);
+      justify-content: center;
       gap: 8px;
       width: 100%;
       padding: 12px;
@@ -301,6 +303,7 @@
 
     @media (max-width: 640px) {
       .container { padding: 16px 12px; margin-top: 12px; }
+      #calendar { grid-template-columns: 28px 28px repeat(5, 78px); justify-content: start; }
       header { display: block; }
       #calendar { gap: 4px; padding: 7px; }
       .weekday { font-size: .78rem; }
@@ -363,7 +366,7 @@
     </div>
   </main>
 
-  <footer>Version: local-1.0 / HTML単体版</footer>
+  <footer>Version: local-1.1 / 日月列コンパクト版</footer>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
