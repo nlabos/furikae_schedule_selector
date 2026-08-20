@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>振替可能日選択</title>
+  <style>
+    :root {
+      --bg: #1e1e1e;
+      --panel: #252526;
+      --panel-2: #2d2d30;
+      --cell: #1f1f1f;
+      --cell-today: #2b2f33;
+      --line: rgba(255,255,255,.14);
+      --text: #d4d4d4;
+      --muted: #a7a7a7;
+      --primary: #007acc;
+      --primary-dark: #005a9e;
+      --danger: #f14c4c;
+      --danger-dark: #a4262c;
+      --accent: #d7ba7d;
+      --sun: #ff6b6b;
+      --sat: #4fc3f7;
+      --selected: #569cd6;
+      --radius: 14px;
+      --shadow: 0 14px 32px rgba(0,0,0,.22);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #2b2f33 0%, var(--bg) 42%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+      line-height: 1.5;
+    }
+
+    .container {
+      width: min(760px, calc(100% - 24px));
+      margin: 24px auto;
+      padding: 22px;
+      background: rgba(37,37,38,.96);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1, h2 {
+      margin: 0;
+      color: var(--primary);
+      letter-spacing: .02em;
+    }
+
+    h1 { font-size: clamp(1.45rem, 3vw, 2rem); }
+    h2 { margin-top: 22px; font-size: 1.25rem; }
+
+    .help {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: .92rem;
+    }
+
+    .calendar-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 18px 0 12px;
+    }
+
+    .month-label {
+      min-width: 170px;
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    button, select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      background: var(--primary);
+      color: #fff;
+      cursor: pointer;
+      transition: transform .05s ease, background .18s ease, opacity .18s ease;
+    }
+
+    button:hover { background: var(--primary-dark); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    .round-button {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      font-size: 1.25rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .sub-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .plain-button {
+      padding: 7px 18px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    .check-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text);
+      font-size: .94rem;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    input[type="checkbox"] {
+      accent-color: var(--primary);
+      width: 18px;
+      height: 18px;
+    }
+
+    #calendar {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+      width: 100%;
+      padding: 12px;
+      background: #232323;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow-x: auto;
+    }
+
+    .weekday {
+      text-align: center;
+      font-weight: 800;
+      color: #efefef;
+      padding: 4px 0 6px;
+      font-size: .92rem;
+    }
+
+    .calendar-day {
+      min-height: 93px;
+      padding: 7px 5px 6px;
+      background: var(--cell);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .calendar-day.today {
+      background: var(--cell-today);
+      border: 2px solid var(--accent);
+      padding: 6px 4px 5px;
+    }
+
+    .calendar-day.no-shift {
+      opacity: .42;
+      background: #1a1a1a;
+    }
+
+    .calendar-day.disabled {
+      opacity: .34;
+    }
+
+    .date-label {
+      width: 100%;
+      text-align: center;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .sun { color: var(--sun); }
+    .sat { color: var(--sat); }
+
+    .shift-options {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .shift-option {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 100%;
+      padding: 3px 2px;
+      border-radius: 7px;
+      background: rgba(255,255,255,.035);
+      cursor: pointer;
+      font-size: .82rem;
+      white-space: nowrap;
+    }
+
+    .shift-option:hover { background: rgba(0,122,204,.18); }
+    .shift-option input { width: 15px; height: 15px; margin: 0; }
+    .shift-option:has(input:checked) { background: rgba(0,122,204,.30); color: #fff; }
+
+    .options-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 16px;
+      margin: 10px 0;
+    }
+
+    select {
+      background: #1e1e1e;
+      color: var(--text);
+      border: 1px solid #3c3c3c;
+      border-radius: 8px;
+      padding: 7px 10px;
+      min-height: 38px;
+    }
+
+    #selectedShifts {
+      min-height: 74px;
+      padding: 13px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #262626;
+      color: var(--selected);
+      font-weight: 800;
+      white-space: pre-line;
+    }
+
+    .placeholder {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .danger { background: var(--danger); }
+    .danger:hover { background: var(--danger-dark); }
+    .action-button { padding: 9px 24px; font-weight: 800; }
+
+    footer {
+      width: min(760px, calc(100% - 24px));
+      margin: 0 auto 24px;
+      color: var(--muted);
+      text-align: center;
+      font-size: .82rem;
+    }
+
+    .toast {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 10;
+      padding: 10px 14px;
+      background: #30363d;
+      color: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 16px 12px; margin-top: 12px; }
+      header { display: block; }
+      #calendar { gap: 4px; padding: 7px; }
+      .weekday { font-size: .78rem; }
+      .calendar-day { min-height: 86px; padding: 6px 3px; border-radius: 8px; }
+      .date-label { font-size: .86rem; }
+      .shift-option { font-size: .70rem; padding: 3px 1px; gap: 2px; }
+      .shift-option input { width: 13px; height: 13px; }
+      .month-label { min-width: 130px; font-size: 1rem; }
+      .actions { justify-content: stretch; }
+      .action-button { flex: 1; padding-left: 8px; padding-right: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header>
+      <div>
+        <h1>振替可能日選択</h1>
+        <p class="help">振替可能な日付・時間を選ぶと、下にコピー用テキストが表示されます。</p>
+      </div>
+    </header>
+
+    <div class="calendar-controls" aria-label="月の切り替え">
+      <button id="prevMonth" class="round-button" type="button" aria-label="前の月">&lt;</button>
+      <div id="currentMonth" class="month-label" aria-live="polite"></div>
+      <button id="nextMonth" class="round-button" type="button" aria-label="次の月">&gt;</button>
+    </div>
+
+    <div class="sub-controls">
+      <button id="resetMonth" class="plain-button" type="button">今月</button>
+      <label class="check-label">
+        <input type="checkbox" id="allowPast" />
+        昨日以前も選択可能にする
+      </label>
+    </div>
+
+    <div id="calendar" aria-label="振替可能日カレンダー"></div>
+
+    <h2>選択した日</h2>
+    <div class="options-row">
+      <label>
+        日付表示形式
+        <select id="dateFormatSelect" aria-label="日付表示形式">
+          <option value="yyyy/mm/dd">yyyy/MM/dd</option>
+          <option value="yy/mm/dd">yy/MM/dd</option>
+          <option value="mm/dd" selected>MM/dd</option>
+        </select>
+      </label>
+      <label class="check-label">
+        <input type="checkbox" id="groupShiftsByDate" />
+        同じ日付の場合は1行にまとめる
+      </label>
+    </div>
+
+    <div id="selectedShifts"><span class="placeholder">まだ選択されていません。</span></div>
+
+    <div class="actions">
+      <button id="clearShifts" class="action-button danger" type="button">全て解除</button>
+      <button id="copyShifts" class="action-button" type="button">コピー</button>
+    </div>
+  </main>
+
+  <footer>Version: local-1.0 / HTML単体版</footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // 必要に応じてここを書き換えると、曜日ごとの時間帯を変更できます。
+    // 0:日, 1:月, 2:火, 3:水, 4:木, 5:金, 6:土
+    const SHIFT_TIMES = {
+      2: ['17:10', '19:00'],
+      3: ['17:10', '19:00'],
+      4: ['17:10', '19:00'],
+      5: ['17:10', '19:00'],
+      6: ['10:00', '12:40', '14:30', '16:20']
+    };
+
+    const WEEK_DAYS = ['日', '月', '火', '水', '木', '金', '土'];
+    const today = new Date();
+    let visibleYear = today.getFullYear();
+    let visibleMonth = today.getMonth();
+    let selected = {};
+    let allowPast = false;
+    let groupByDate = false;
+    let selectedDateFormat = 'mm/dd';
+
+    const pad = (num) => String(num).padStart(2, '0');
+    const ymd = (year, month, date) => `${year}/${pad(month + 1)}/${pad(date)}`;
+
+    function startOfDay(date) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function isPastDate(year, month, date) {
+      const target = startOfDay(new Date(year, month, date));
+      const yesterday = startOfDay(new Date());
+      yesterday.setDate(yesterday.getDate() - 1);
+      return target <= yesterday;
+    }
+
+    function isToday(year, month, date) {
+      const now = new Date();
+      return year === now.getFullYear() && month === now.getMonth() && date === now.getDate();
+    }
+
+    function formatDate(key) {
+      const [year, month, date] = key.split('/').map(Number);
+      if (selectedDateFormat === 'yyyy/mm/dd') return `${year}/${pad(month)}/${pad(date)}`;
+      if (selectedDateFormat === 'yy/mm/dd') return `${String(year).slice(-2)}/${pad(month)}/${pad(date)}`;
+      return `${pad(month)}/${pad(date)}`;
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 1500);
+    }
+
+    function renderMonthLabel() {
+      document.getElementById('currentMonth').textContent = `${visibleYear}年${visibleMonth + 1}月`;
+    }
+
+    function renderCalendar() {
+      const calendar = document.getElementById('calendar');
+      calendar.innerHTML = '';
+
+      WEEK_DAYS.forEach((day, index) => {
+        const el = document.createElement('div');
+        el.className = 'weekday';
+        if (index === 0) el.classList.add('sun');
+        if (index === 6) el.classList.add('sat');
+        el.textContent = day;
+        calendar.appendChild(el);
+      });
+
+      const firstDay = new Date(visibleYear, visibleMonth, 1);
+      const lastDay = new Date(visibleYear, visibleMonth + 1, 0);
+
+      for (let i = 0; i < firstDay.getDay(); i++) {
+        calendar.appendChild(document.createElement('div'));
+      }
+
+      for (let date = 1; date <= lastDay.getDate(); date++) {
+        const day = new Date(visibleYear, visibleMonth, date);
+        const dayOfWeek = day.getDay();
+        const key = ymd(visibleYear, visibleMonth, date);
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day';
+
+        if (isToday(visibleYear, visibleMonth, date)) cell.classList.add('today');
+        if (isPastDate(visibleYear, visibleMonth, date) && !allowPast) cell.classList.add('disabled');
+        if (!SHIFT_TIMES[dayOfWeek]) cell.classList.add('no-shift');
+
+        const dateLabel = document.createElement('div');
+        dateLabel.className = 'date-label';
+        if (dayOfWeek === 0) dateLabel.classList.add('sun');
+        if (dayOfWeek === 6) dateLabel.classList.add('sat');
+        dateLabel.textContent = date;
+        cell.appendChild(dateLabel);
+
+        if (SHIFT_TIMES[dayOfWeek]) {
+          const options = document.createElement('div');
+          options.className = 'shift-options';
+
+          SHIFT_TIMES[dayOfWeek].forEach((time) => {
+            const label = document.createElement('label');
+            label.className = 'shift-option';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.disabled = isPastDate(visibleYear, visibleMonth, date) && !allowPast;
+            checkbox.checked = Boolean(selected[key]?.includes(time));
+            checkbox.addEventListener('change', () => toggleShift(key, time, checkbox.checked));
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(time));
+            options.appendChild(label);
+          });
+
+          cell.appendChild(options);
+        }
+
+        calendar.appendChild(cell);
+      }
+
+      renderMonthLabel();
+    }
+
+    function toggleShift(dateKey, time, checked) {
+      if (!selected[dateKey]) selected[dateKey] = [];
+
+      if (checked && !selected[dateKey].includes(time)) {
+        selected[dateKey].push(time);
+      }
+
+      if (!checked) {
+        selected[dateKey] = selected[dateKey].filter((t) => t !== time);
+        if (selected[dateKey].length === 0) delete selected[dateKey];
+      }
+
+      renderSelected();
+    }
+
+    function getSelectedText() {
+      const lines = [];
+      Object.keys(selected).sort().forEach((key) => {
+        const [year, month, date] = key.split('/').map(Number);
+        const wd = WEEK_DAYS[new Date(year, month - 1, date).getDay()];
+        const times = [...selected[key]].sort();
+        const dateText = formatDate(key);
+
+        if (groupByDate) {
+          lines.push(`・${dateText} (${wd}) ${times.map((time) => `${time} コマ`).join(', ')}`);
+        } else {
+          times.forEach((time) => lines.push(`・${dateText} (${wd}) ${time} コマ`));
+        }
+      });
+      return lines.join('\n');
+    }
+
+    function renderSelected() {
+      const output = document.getElementById('selectedShifts');
+      const text = getSelectedText();
+      if (!text) {
+        output.innerHTML = '<span class="placeholder">まだ選択されていません。</span>';
+      } else {
+        output.textContent = text;
+      }
+    }
+
+    async function copySelectedText() {
+      const text = getSelectedText();
+      if (!text) {
+        showToast('選択されている日程がありません');
+        return;
+      }
+
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          fallbackCopy(text);
+        }
+        showToast('コピーしました');
+      } catch (e) {
+        try {
+          fallbackCopy(text);
+          showToast('コピーしました');
+        } catch (error) {
+          showToast('コピーに失敗しました。テキストを手動で選択してください');
+        }
+      }
+    }
+
+    function fallbackCopy(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+
+    document.getElementById('prevMonth').addEventListener('click', () => {
+      visibleMonth--;
+      if (visibleMonth < 0) {
+        visibleMonth = 11;
+        visibleYear--;
+      }
+      renderCalendar();
+    });
+
+    document.getElementById('nextMonth').addEventListener('click', () => {
+      visibleMonth++;
+      if (visibleMonth > 11) {
+        visibleMonth = 0;
+        visibleYear++;
+      }
+      renderCalendar();
+    });
+
+    document.getElementById('resetMonth').addEventListener('click', () => {
+      const now = new Date();
+      visibleYear = now.getFullYear();
+      visibleMonth = now.getMonth();
+      renderCalendar();
+    });
+
+    document.getElementById('allowPast').addEventListener('change', (event) => {
+      allowPast = event.target.checked;
+      renderCalendar();
+    });
+
+    document.getElementById('groupShiftsByDate').addEventListener('change', (event) => {
+      groupByDate = event.target.checked;
+      renderSelected();
+    });
+
+    document.getElementById('dateFormatSelect').addEventListener('change', (event) => {
+      selectedDateFormat = event.target.value;
+      renderSelected();
+    });
+
+    document.getElementById('clearShifts').addEventListener('click', () => {
+      selected = {};
+      renderCalendar();
+      renderSelected();
+      showToast('全て解除しました');
+    });
+
+    document.getElementById('copyShifts').addEventListener('click', copySelectedText);
+
+    renderCalendar();
+    renderSelected();
+  </script>
+</body>
+</html>
